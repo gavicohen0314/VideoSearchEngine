@@ -1,9 +1,13 @@
 from yt_dlp import YoutubeDL
 import sys
+from scene_detector import run_scene_detection
 
 
 # Progress hook for download
 def progress_hook(d):
+    """
+    Inline progress hook for the download.
+    """
     if d['status'] == 'downloading':
         sys.stdout.write(f"\r{d.get('downloaded_bytes', 0)}")
         sys.stdout.flush()
@@ -12,7 +16,9 @@ def progress_hook(d):
 
 
 def download_video(query):
-
+    """
+    Function that downloads the first youtube video result for an inputted query.
+    """
     ydl_opts = {
         'format': 'mp4',
         'outtmpl': 'video.mp4',
