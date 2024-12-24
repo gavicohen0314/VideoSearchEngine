@@ -108,6 +108,14 @@ def generate_captions():
         json.dump(captions, json_file, indent=4)
 
 
+def search_captions(query):
+    with open("scene_captions.json", "r") as json_file:
+        captions = json.load(json_file)
+
+    matching_scenes = [scene_number for scene_number, caption in captions.items() if query.lower() in caption.lower()]
+    return matching_scenes
+
+
 def main():
     if not os.path.exists("scene_captions.json"):
         try:
@@ -118,6 +126,10 @@ def main():
             return
         detect_scenes()
         generate_captions()
+
+    print("Search the video using a word:")
+    search_query = input()
+    print(search_captions(search_query))
 
 
 if __name__ == "__main__":
