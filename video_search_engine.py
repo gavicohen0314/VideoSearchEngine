@@ -13,6 +13,8 @@ from tqdm import tqdm
 from rapidfuzz import process
 import matplotlib.pyplot as plt
 import math
+from prompt_toolkit import prompt
+from prompt_toolkit.completion import WordCompleter
 
 VIDEO_PATH = 'video.mp4'
 SCENES_DIR = 'scenes'
@@ -111,10 +113,44 @@ def generate_captions():
         json.dump(captions, json_file, indent=4)
 
 
-def search_captions(search_query):
+def load_captions():
     with open("scene_captions.json", "r") as json_file:
         captions = json.load(json_file)
+    return captions
 
+
+def get_words_from_captions(captions_dict):
+    """
+    Extracts unique words from a dictionary of captions.
+    Args:
+        captions_dict (dict): A dictionary where values are strings (captions).
+    Returns:
+        list: A list of unique words.
+    """
+    words = set()
+    for caption in captions_dict.values():
+        words.update(caption.split())
+    return sorted(words)
+
+
+def get_user_input(captions_dict):
+    """
+    Prompts the user for input with autocomplete, using words from captions_dict.
+    Args:
+        captions_dict (dict): A dictionary where values are captions (strings).
+    Returns:
+        str: User input.
+    """
+    # Extract unique words from the captions
+    suggestions = get_words_from_captions(captions_dict)
+    # Create a WordCompleter instance with the suggestions
+    autocomplete = WordCompleter(suggestions, ignore_case=True)
+    # Prompt the user with autocomplete
+    user_input = prompt("Search the video using a word: ", completer=autocomplete)
+    return user_input
+
+
+def search_captions(search_query, captions):
     matching_scenes = [
         scene for scene,
         caption in captions.items()
@@ -181,9 +217,9 @@ def main():
         detect_scenes()
         generate_captions()
 
-    print("Search the video using a word:")
-    search_query = input()
-    create_collage(search_captions(search_query))
+    captions = load_captions()
+    search_query = get_user_input(captions)
+    create_collage(search_captions(search_query, captions))
 
 
 if __name__ == "__main__":
