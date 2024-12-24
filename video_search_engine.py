@@ -1,9 +1,13 @@
 from yt_dlp import YoutubeDL
 import sys
+import logging
 from scene_detector import run_scene_detection
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Progress hook for download
+
 def progress_hook(d):
     """
     Inline progress hook for the download.
@@ -12,7 +16,7 @@ def progress_hook(d):
         sys.stdout.write(f"\r{d.get('downloaded_bytes', 0)}")
         sys.stdout.flush()
     elif d['status'] == 'finished':
-        print("\nDownload complete!")
+        logger.info("Download complete!")
 
 
 def download_video(query):
@@ -32,9 +36,14 @@ def download_video(query):
         ydl.download([query])
 
 
-if __name__ == "__main__":
+def main():
     try:
-        print("Downloading the video from YouTube...")
+        logger.info("Downloading the video from YouTube...")
         download_video("super mario movie trailer")
     except Exception as e:
-        print(f"Error downloading video: {e}")
+        logger.error(f"Error downloading video: {e}")
+        return
+
+
+if __name__ == "__main__":
+    main()
