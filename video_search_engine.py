@@ -11,6 +11,8 @@ import requests
 import gzip
 from tqdm import tqdm
 from rapidfuzz import process
+import matplotlib.pyplot as plt
+import math
 
 VIDEO_PATH = 'video.mp4'
 SCENES_DIR = 'scenes'
@@ -121,6 +123,53 @@ def search_captions(search_query):
     return matching_scenes
 
 
+def create_collage(image_paths, output_path="collage.png", images_per_row=5, image_size=(640, 360)):
+    """
+    Creates a collage of images from the provided paths and saves it as a PNG file.
+
+    Args:
+        image_paths (list): List of file paths to images.
+        output_path (str): Path to save the collage as a PNG file.
+        images_per_row (int): Number of images per row in the collage.
+        image_size (tuple): Size of each image in the collage (width, height).
+
+    Returns:
+        None
+    """
+    if not image_paths:
+        print("No images provided.")
+        return
+
+    # Calculate the number of rows and columns
+    num_images = len(image_paths)
+    num_rows = math.ceil(num_images / images_per_row)
+
+    # Create a blank canvas for the collage
+    collage_width = images_per_row * image_size[0]
+    collage_height = num_rows * image_size[1]
+    collage = Image.new("RGB", (collage_width, collage_height), "white")
+
+    # Add images to the collage
+    for index, image_path in enumerate(image_paths):
+        row = index // images_per_row
+        col = index % images_per_row
+        try:
+            img = Image.open(image_path).resize(image_size)
+            collage.paste(img, (col * image_size[0], row * image_size[1]))
+        except Exception as e:
+            print(f"Error loading image {image_path}: {e}")
+
+    # Save the collage
+    collage.save(output_path)
+    print(f"Collage saved to {output_path}")
+
+    # Display the collage
+    plt.figure(figsize=(10, 10))
+    plt.imshow(collage)
+    plt.axis("off")
+    plt.show()
+
+
 def main():
     if not os.path.exists("scene_captions.json"):
         try:
@@ -134,7 +183,7 @@ def main():
 
     print("Search the video using a word:")
     search_query = input()
-    print(search_captions(search_query))
+    create_collage(search_captions(search_query))
 
 
 if __name__ == "__main__":
