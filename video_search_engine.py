@@ -19,6 +19,7 @@ import time
 import google.generativeai as genai
 from dotenv import load_dotenv
 import questionary
+import cv2
 
 VIDEO_PATH = 'video.mp4'
 SCENES_DIR = 'scenes'
@@ -214,7 +215,7 @@ def upload_and_prompt(file_path, search_query, mime_type="video/mp4"):
     """
     Uploads a single video file to Gemini, waits for it to become active, prompts the model,
     and returns the JSON response.
-    
+
     Args:
         file_path (str): Path to the video file to upload.
         prompt (str): The prompt to send to the model.
@@ -246,7 +247,7 @@ def upload_and_prompt(file_path, search_query, mime_type="video/mp4"):
 
     # Create the model
     generation_config = {
-        "temperature": 1,
+        "temperature": 0.7,
         "top_p": 0.95,
         "top_k": 40,
         "max_output_tokens": 8192,
@@ -269,8 +270,9 @@ def upload_and_prompt(file_path, search_query, mime_type="video/mp4"):
 
     # Send the prompt and get the response
     prompt = f"""Expected output is a JSON as follows:
-{{'timestamps': ['0:02', '1:12', ...]}}
-Provide all the timestamps fitting the following user query: {search_query}"""
+{{'timestamps': ['00:02', '01:12', ...]}}
+Make sure that hours, seconds and minutes are returned accurately. Use leading 0s for hours and minutes.
+Provide all the timestamps in mm:ss fitting the following user query: {search_query}"""
     response = chat_session.send_message(prompt)
 
     return response.text
@@ -286,11 +288,44 @@ def image_search():
     create_collage(search_captions(search_query, captions))
 
 
+def process_timestamps(timestamps):
+    folder_name = "temp_images"
+    os.makedirs(folder_name, exist_ok=True)
+    video = cv2.VideoCapture(VIDEO_PATH)
+    fps = video.get(cv2.CAP_PROP_FPS)
+    image_paths = []
+
+    for timestamp in timestamps:
+        timestamp_list = timestamp.split(':')
+        mm, ss = timestamp_list
+        timestamp_list_floats = [float(i) for i in timestamp_list]
+        minutes, seconds = timestamp_list_floats
+        frame_nr = fps*(minutes * 60 + seconds)
+        video.set(1, frame_nr)
+        _, frame = video.read()
+        frame_path = os.path.join(folder_name, f'{mm}-{ss}.jpg')
+        cv2.imwrite(frame_path, frame)
+        image_paths.append(frame_path)
+
+    create_collage(image_paths)
+    # Cleanup: Delete the folder and its contents
+    try:
+        shutil.rmtree(folder_name)
+    except Exception as e:
+        logger.error(f"Error deleting folder: {e}")
+
+
 def video_search():
     print("Using a video model. What would you like me to find in the video?")
     search_query = input()
     response_json = upload_and_prompt(VIDEO_PATH, search_query)
-    print(response_json)
+    try:
+        json_data = json.loads(response_json)
+        timestamps = json_data['timestamps']
+    except json.JSONDecodeError as e:
+        logger.error(f"Error decoding JSON from Gemini: {e}")
+        return
+    process_timestamps(timestamps)
 
 
 def choose_model():
@@ -317,6 +352,7 @@ def main():
             return
 
     choose_model()
+
 
 
 if __name__ == "__main__":
