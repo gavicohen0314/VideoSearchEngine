@@ -98,12 +98,12 @@ def generate_captions():
         download_moondream_model()
 
     model = moondream.vl(model=MOONDREAM_MODEL_PATH)
-    for i, scene in enumerate(tqdm(os.listdir(SCENES_DIR), desc="Generating captions"), start=1):
+    for scene in tqdm(os.listdir(SCENES_DIR), desc="Generating captions"):
         scene_path = os.path.join(SCENES_DIR, scene)
         # Load and process image
         image = Image.open(scene_path)
         encoded_image = model.encode_image(image)
-        captions[i] = model.caption(encoded_image, length='short')["caption"]  # Generate caption
+        captions[scene_path] = model.caption(encoded_image, length='short')["caption"]  # Generate caption
 
     with open("scene_captions.json", "w") as json_file:
         json.dump(captions, json_file, indent=4)
@@ -114,9 +114,9 @@ def search_captions(search_query):
         captions = json.load(json_file)
 
     matching_scenes = [
-        scene_number for scene_number, 
-        caption in captions.items() 
-        if process.extractOne(search_query, [caption], score_cutoff=60)
+        scene for scene,
+        caption in captions.items()
+        if process.extractOne(search_query.lower(), [caption.lower()], score_cutoff=50)
     ]
     return matching_scenes
 
