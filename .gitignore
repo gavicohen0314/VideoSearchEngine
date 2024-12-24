@@ -1,2 +1,7 @@
 # Virtual environment
 \venv
+# Cached Files
+__pycache__/
+# Temp
+scenes/
+video.mp4
