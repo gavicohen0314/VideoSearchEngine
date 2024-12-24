@@ -15,6 +15,13 @@ import matplotlib.pyplot as plt
 import math
 from prompt_toolkit import prompt
 from prompt_toolkit.completion import WordCompleter
+import time
+import google.generativeai as genai
+from dotenv import load_dotenv
+import absl.logging
+
+# Suppress absl logging warnings
+absl.logging.set_verbosity(absl.logging.ERROR)
 
 VIDEO_PATH = 'video.mp4'
 SCENES_DIR = 'scenes'
@@ -206,20 +213,97 @@ def create_collage(image_paths, output_path="collage.png", images_per_row=5, ima
     plt.show()
 
 
-def main():
+def upload_and_prompt(file_path, search_query, mime_type="video/mp4"):
+    """
+    Uploads a single video file to Gemini, waits for it to become active, prompts the model,
+    and returns the JSON response.
+    
+    Args:
+        file_path (str): Path to the video file to upload.
+        prompt (str): The prompt to send to the model.
+        mime_type (str): The MIME type of the video file (default: "video/mp4").
+
+    Returns:
+        dict: The JSON response from the model.
+    """
+    # Configure the API
+    load_dotenv()
+    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+    # Upload the video file
+    file = genai.upload_file(file_path, mime_type=mime_type)
+    print(f"Uploaded file '{file.display_name}' as: {file.uri}")
+
+    # Wait for the file to be active
+    print("Waiting for file processing...")
+    while True:
+        file_status = genai.get_file(file.name)
+        if file_status.state.name == "PROCESSING":
+            print(".", end="", flush=True)
+            time.sleep(10)
+        elif file_status.state.name == "ACTIVE":
+            print("...file is ready\n")
+            break
+        else:
+            raise Exception(f"File {file.name} failed to process")
+
+    # Create the model
+    generation_config = {
+        "temperature": 1,
+        "top_p": 0.95,
+        "top_k": 40,
+        "max_output_tokens": 8192,
+        "response_mime_type": "application/json",
+    }
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        generation_config=generation_config,
+    )
+
+    # Start a chat session with the model
+    chat_session = model.start_chat(
+        history=[
+            {
+                "role": "user",
+                "parts": [file],
+            },
+        ]
+    )
+
+    # Send the prompt and get the response
+    prompt = f"""Expected output is a JSON as follows:
+{{'timestamps': ['0:02', '1:12', ...]}}
+Provide all the timestamps fitting the following user query: {search_query}"""
+    response = chat_session.send_message(prompt)
+
+    return response.text
+
+
+def image_search():
     if not os.path.exists("scene_captions.json"):
-        try:
-            print("Downloading the video from YouTube...")
-            download_video("super mario movie trailer")
-        except Exception as e:
-            logger.error(f"Error downloading video: {e}")
-            return
         detect_scenes()
         generate_captions()
 
     captions = load_captions()
     search_query = get_user_input(captions)
     create_collage(search_captions(search_query, captions))
+
+
+def video_search():
+    search_query = input()
+    response_json = upload_and_prompt(VIDEO_PATH, search_query)
+    print(response_json)
+
+
+def main():
+    try:
+        print("Downloading the video from YouTube...")
+        download_video("super mario movie trailer")
+    except Exception as e:
+        logger.error(f"Error downloading video: {e}")
+        return
+
+    image_search()
 
 
 if __name__ == "__main__":
