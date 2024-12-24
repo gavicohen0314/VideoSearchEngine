@@ -10,6 +10,7 @@ import json
 import requests
 import gzip
 from tqdm import tqdm
+from rapidfuzz import process
 
 VIDEO_PATH = 'video.mp4'
 SCENES_DIR = 'scenes'
@@ -108,11 +109,15 @@ def generate_captions():
         json.dump(captions, json_file, indent=4)
 
 
-def search_captions(query):
+def search_captions(search_query):
     with open("scene_captions.json", "r") as json_file:
         captions = json.load(json_file)
 
-    matching_scenes = [scene_number for scene_number, caption in captions.items() if query.lower() in caption.lower()]
+    matching_scenes = [
+        scene_number for scene_number, 
+        caption in captions.items() 
+        if process.extractOne(search_query, [caption], score_cutoff=60)
+    ]
     return matching_scenes
 
 
