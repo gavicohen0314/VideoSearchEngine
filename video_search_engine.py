@@ -18,16 +18,13 @@ from prompt_toolkit.completion import WordCompleter
 import time
 import google.generativeai as genai
 from dotenv import load_dotenv
-import absl.logging
-
-# Suppress absl logging warnings
-absl.logging.set_verbosity(absl.logging.ERROR)
+import questionary
 
 VIDEO_PATH = 'video.mp4'
 SCENES_DIR = 'scenes'
 MOONDREAM_MODEL_PATH = "moondream-0_5b-int8.mf"
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
 
@@ -232,7 +229,7 @@ def upload_and_prompt(file_path, search_query, mime_type="video/mp4"):
 
     # Upload the video file
     file = genai.upload_file(file_path, mime_type=mime_type)
-    print(f"Uploaded file '{file.display_name}' as: {file.uri}")
+    print("Uploaded video...")
 
     # Wait for the file to be active
     print("Waiting for file processing...")
@@ -242,7 +239,7 @@ def upload_and_prompt(file_path, search_query, mime_type="video/mp4"):
             print(".", end="", flush=True)
             time.sleep(10)
         elif file_status.state.name == "ACTIVE":
-            print("...file is ready\n")
+            print("..file is ready!\n")
             break
         else:
             raise Exception(f"File {file.name} failed to process")
@@ -290,20 +287,36 @@ def image_search():
 
 
 def video_search():
+    print("Using a video model. What would you like me to find in the video?")
     search_query = input()
     response_json = upload_and_prompt(VIDEO_PATH, search_query)
     print(response_json)
 
 
-def main():
-    try:
-        print("Downloading the video from YouTube...")
-        download_video("super mario movie trailer")
-    except Exception as e:
-        logger.error(f"Error downloading video: {e}")
-        return
+def choose_model():
+    answer = questionary.select(
+        "How would you like to search the video?",
+        choices=["Search using Image Model", "Search using Video Model"]
+    ).ask()
 
-    image_search()
+    if answer == "Search using Image Model":
+        print("You selected: Search using Image Model")
+        image_search()
+    elif answer == "Search using Video Model":
+        print("You selected: Search using Video Model")
+        video_search()
+
+
+def main():
+    if not os.path.exists("video.mp4"):
+        try:
+            print("Downloading the video from YouTube...")
+            download_video("super mario movie trailer")
+        except Exception as e:
+            logger.error(f"Error downloading video: {e}")
+            return
+
+    choose_model()
 
 
 if __name__ == "__main__":
