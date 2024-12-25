@@ -156,6 +156,9 @@ def get_user_input(captions_dict):
 
 
 def search_captions(search_query, captions):
+    """
+    Function that searches a dictionary of captions and uses fuzzy matching to match words to the captions.
+    """
     matching_scenes = [
         scene for scene,
         caption in captions.items()
@@ -279,6 +282,9 @@ Provide all the timestamps in mm:ss fitting the following user query: {search_qu
 
 
 def image_search():
+    """
+    Function that searches a video using a local image model.
+    """
     if not os.path.exists("scene_captions.json"):
         detect_scenes()
         generate_captions()
@@ -289,6 +295,9 @@ def image_search():
 
 
 def process_timestamps(timestamps):
+    """
+    Function that creates a collage of frames using timestamps from a video.
+    """
     folder_name = "temp_images"
     os.makedirs(folder_name, exist_ok=True)
     video = cv2.VideoCapture(VIDEO_PATH)
@@ -316,6 +325,9 @@ def process_timestamps(timestamps):
 
 
 def video_search():
+    """
+    Function that searches a video using Gemini.
+    """
     print("Using a video model. What would you like me to find in the video?")
     search_query = input()
     response_json = upload_and_prompt(VIDEO_PATH, search_query)
@@ -329,6 +341,9 @@ def video_search():
 
 
 def choose_model():
+    """
+    Function that gives the user options of models to choose from.
+    """
     answer = questionary.select(
         "How would you like to search the video?",
         choices=["Search using Image Model", "Search using Video Model"]
@@ -352,7 +367,6 @@ def main():
             return
 
     choose_model()
-
 
 
 if __name__ == "__main__":
